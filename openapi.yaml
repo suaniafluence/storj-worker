@@ -177,6 +177,69 @@ components:
           type: string
           example: "Mon canvas.canvas"
 
+    StatsResponse:
+      type: object
+      properties:
+        bandwidth:
+          type: object
+          properties:
+            total_bytes_sent:
+              type: integer
+              example: 1048576
+            total_bytes_received:
+              type: integer
+              example: 524288
+            total_bytes:
+              type: integer
+              example: 1572864
+            total_mb_sent:
+              type: number
+              example: 1.0
+            total_mb_received:
+              type: number
+              example: 0.5
+            total_mb:
+              type: number
+              example: 1.5
+        requests:
+          type: object
+          properties:
+            total:
+              type: integer
+              example: 42
+            by_endpoint:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  requests:
+                    type: integer
+                  bytes_sent:
+                    type: integer
+                  bytes_received:
+                    type: integer
+                  kb_sent:
+                    type: number
+                  kb_received:
+                    type: number
+        uptime:
+          type: object
+          properties:
+            seconds:
+              type: number
+              example: 3600.5
+            formatted:
+              type: string
+              example: "1h 0m 0s"
+        start_time:
+          type: string
+          format: date-time
+          example: "2025-10-16T14:00:00Z"
+        current_time:
+          type: string
+          format: date-time
+          example: "2025-10-16T15:00:00Z"
+
 paths:
   /health:
     get:
@@ -193,6 +256,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
+
+  /stats:
+    get:
+      summary: Statistiques de bande passante
+      description: Retourne les statistiques d'utilisation de la bande passante et le nombre de requêtes
+      operationId: getStats
+      tags:
+        - System
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Statistiques récupérées avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+        '401':
+          description: Non autorisé - Token manquant ou invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /listNotes:
     get:
