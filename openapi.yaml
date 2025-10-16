@@ -1,4 +1,4 @@
-openapi: 3.1.0
+openapi: 3.0.3
 info:
   title: Storj Worker API
   description: API Flask pour gérer des fichiers sur Storj S3 (bucket Obsidian)
