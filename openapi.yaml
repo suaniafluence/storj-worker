@@ -101,6 +101,82 @@ components:
           type: string
           example: "Unauthorized"
 
+    ListCanvasResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 2
+        files:
+          type: array
+          items:
+            type: string
+          example:
+            - "Sans titre.canvas"
+            - "Mon canvas.canvas"
+
+    GetCanvasResponse:
+      type: object
+      properties:
+        filename:
+          type: string
+          example: "Sans titre.canvas"
+        content:
+          type: object
+          description: Contenu JSON du canvas
+          example:
+            nodes: []
+            edges: []
+        size:
+          type: integer
+          example: 1024
+        last_modified:
+          type: string
+          format: date-time
+          example: "2025-10-16T14:30:00Z"
+
+    CreateCanvasRequest:
+      type: object
+      required:
+        - filename
+        - content
+      properties:
+        filename:
+          type: string
+          description: Nom du fichier canvas (l'extension .canvas sera ajoutée automatiquement si absente)
+          example: "Mon nouveau canvas"
+        content:
+          type: object
+          description: Contenu JSON du canvas
+          example:
+            nodes: []
+            edges: []
+
+    UpdateCanvasRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: object
+          description: Nouveau contenu JSON du canvas
+          example:
+            nodes: []
+            edges: []
+
+    CanvasResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Canvas 'Mon canvas.canvas' created successfully"
+        filename:
+          type: string
+          example: "Mon canvas.canvas"
+
 paths:
   /health:
     get:
@@ -241,8 +317,224 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /canvas:
+    get:
+      summary: Liste tous les fichiers Canvas
+      description: Retourne la liste de tous les fichiers .canvas présents dans le bucket Storj
+      operationId: listCanvas
+      tags:
+        - Canvas
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Liste des fichiers canvas récupérée avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListCanvasResponse'
+        '401':
+          description: Non autorisé - Token manquant ou invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Créer un nouveau fichier Canvas
+      description: Crée un nouveau fichier .canvas dans le bucket Storj
+      operationId: createCanvas
+      tags:
+        - Canvas
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCanvasRequest'
+      responses:
+        '201':
+          description: Canvas créé avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanvasResponse'
+        '400':
+          description: Requête invalide - Nom de fichier ou contenu manquant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Non autorisé - Token manquant ou invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflit - Le fichier existe déjà
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /canvas/{filename}:
+    get:
+      summary: Récupérer un fichier Canvas
+      description: Récupère le contenu d'un fichier .canvas spécifique
+      operationId: getCanvas
+      tags:
+        - Canvas
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          description: Nom du fichier canvas (avec ou sans l'extension .canvas)
+          schema:
+            type: string
+          example: "Sans titre"
+      responses:
+        '200':
+          description: Canvas récupéré avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCanvasResponse'
+        '401':
+          description: Non autorisé - Token manquant ou invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Canvas non trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Mettre à jour un fichier Canvas
+      description: Met à jour le contenu d'un fichier .canvas existant
+      operationId: updateCanvas
+      tags:
+        - Canvas
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          description: Nom du fichier canvas (avec ou sans l'extension .canvas)
+          schema:
+            type: string
+          example: "Sans titre"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCanvasRequest'
+      responses:
+        '200':
+          description: Canvas mis à jour avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanvasResponse'
+        '400':
+          description: Requête invalide - Contenu manquant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Non autorisé - Token manquant ou invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Canvas non trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Supprimer un fichier Canvas
+      description: Supprime un fichier .canvas du bucket Storj
+      operationId: deleteCanvas
+      tags:
+        - Canvas
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          description: Nom du fichier canvas (avec ou sans l'extension .canvas)
+          schema:
+            type: string
+          example: "Sans titre"
+      responses:
+        '200':
+          description: Canvas supprimé avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanvasResponse'
+        '401':
+          description: Non autorisé - Token manquant ou invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Canvas non trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 tags:
   - name: System
     description: Endpoints système (health check)
   - name: Notes
     description: Gestion des fichiers notes dans Storj S3
+  - name: Canvas
+    description: CRUD complet pour les fichiers .canvas

@@ -113,14 +113,14 @@ def write_note():
     auth_error = check_auth()
     if auth_error:
         return auth_error
-    
+
     data = request.get_json()
     filename = data.get("filename")
     content = data.get("content", "")
-    
+
     if not filename:
         return jsonify({"error": "Missing filename"}), 400
-    
+
     try:
         s3.put_object(
             Bucket=BUCKET,
@@ -130,6 +130,191 @@ def write_note():
         return jsonify({
             "success": True,
             "message": f"{filename} uploaded"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ========== CRUD CANVAS ==========
+
+@app.route("/canvas", methods=["GET"])
+def list_canvas():
+    """Liste tous les fichiers .canvas"""
+    auth_error = check_auth()
+    if auth_error:
+        return auth_error
+
+    try:
+        response = s3.list_objects_v2(Bucket=BUCKET)
+        canvas_files = [
+            obj["Key"] for obj in response.get("Contents", [])
+            if obj["Key"].endswith(".canvas")
+        ]
+        return jsonify({
+            "count": len(canvas_files),
+            "files": canvas_files
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/canvas/<path:filename>", methods=["GET"])
+def get_canvas(filename):
+    """Récupère un fichier .canvas spécifique"""
+    auth_error = check_auth()
+    if auth_error:
+        return auth_error
+
+    # Ajouter l'extension .canvas si elle n'est pas présente
+    if not filename.endswith(".canvas"):
+        filename = f"{filename}.canvas"
+
+    try:
+        response = s3.get_object(Bucket=BUCKET, Key=filename)
+        content = response["Body"].read().decode("utf-8")
+
+        # Tenter de parser le JSON pour validation
+        import json
+        try:
+            canvas_data = json.loads(content)
+        except json.JSONDecodeError:
+            canvas_data = content
+
+        return jsonify({
+            "filename": filename,
+            "content": canvas_data,
+            "size": len(content),
+            "last_modified": response["LastModified"].isoformat()
+        })
+    except s3.exceptions.NoSuchKey:
+        return jsonify({"error": f"Canvas file '{filename}' not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/canvas", methods=["POST"])
+def create_canvas():
+    """Crée un nouveau fichier .canvas"""
+    auth_error = check_auth()
+    if auth_error:
+        return auth_error
+
+    data = request.get_json()
+    filename = data.get("filename")
+    content = data.get("content")
+
+    if not filename:
+        return jsonify({"error": "Missing filename"}), 400
+
+    if not content:
+        return jsonify({"error": "Missing content"}), 400
+
+    # Ajouter l'extension .canvas si elle n'est pas présente
+    if not filename.endswith(".canvas"):
+        filename = f"{filename}.canvas"
+
+    try:
+        # Vérifier si le fichier existe déjà
+        try:
+            s3.head_object(Bucket=BUCKET, Key=filename)
+            return jsonify({"error": f"Canvas file '{filename}' already exists"}), 409
+        except s3.exceptions.ClientError:
+            pass
+
+        # Convertir en JSON si c'est un dict/list
+        import json
+        if isinstance(content, (dict, list)):
+            content_str = json.dumps(content, indent=2, ensure_ascii=False)
+        else:
+            content_str = str(content)
+
+        s3.put_object(
+            Bucket=BUCKET,
+            Key=filename,
+            Body=content_str.encode("utf-8"),
+            ContentType="application/json"
+        )
+
+        return jsonify({
+            "success": True,
+            "message": f"Canvas '{filename}' created successfully",
+            "filename": filename
+        }), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/canvas/<path:filename>", methods=["PUT"])
+def update_canvas(filename):
+    """Met à jour un fichier .canvas existant"""
+    auth_error = check_auth()
+    if auth_error:
+        return auth_error
+
+    data = request.get_json()
+    content = data.get("content")
+
+    if not content:
+        return jsonify({"error": "Missing content"}), 400
+
+    # Ajouter l'extension .canvas si elle n'est pas présente
+    if not filename.endswith(".canvas"):
+        filename = f"{filename}.canvas"
+
+    try:
+        # Vérifier si le fichier existe
+        try:
+            s3.head_object(Bucket=BUCKET, Key=filename)
+        except s3.exceptions.ClientError:
+            return jsonify({"error": f"Canvas file '{filename}' not found"}), 404
+
+        # Convertir en JSON si c'est un dict/list
+        import json
+        if isinstance(content, (dict, list)):
+            content_str = json.dumps(content, indent=2, ensure_ascii=False)
+        else:
+            content_str = str(content)
+
+        s3.put_object(
+            Bucket=BUCKET,
+            Key=filename,
+            Body=content_str.encode("utf-8"),
+            ContentType="application/json"
+        )
+
+        return jsonify({
+            "success": True,
+            "message": f"Canvas '{filename}' updated successfully",
+            "filename": filename
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/canvas/<path:filename>", methods=["DELETE"])
+def delete_canvas(filename):
+    """Supprime un fichier .canvas"""
+    auth_error = check_auth()
+    if auth_error:
+        return auth_error
+
+    # Ajouter l'extension .canvas si elle n'est pas présente
+    if not filename.endswith(".canvas"):
+        filename = f"{filename}.canvas"
+
+    try:
+        # Vérifier si le fichier existe
+        try:
+            s3.head_object(Bucket=BUCKET, Key=filename)
+        except s3.exceptions.ClientError:
+            return jsonify({"error": f"Canvas file '{filename}' not found"}), 404
+
+        s3.delete_object(Bucket=BUCKET, Key=filename)
+
+        return jsonify({
+            "success": True,
+            "message": f"Canvas '{filename}' deleted successfully",
+            "filename": filename
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
