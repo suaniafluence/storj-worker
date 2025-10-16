@@ -1,0 +1,248 @@
+openapi: 3.1.0
+info:
+  title: Storj Worker API
+  description: API Flask pour gérer des fichiers sur Storj S3 (bucket Obsidian)
+  version: 1.0.0
+  contact:
+    name: suaniafluence
+    url: https://github.com/suaniafluence/storj-worker
+
+servers:
+  - url: http://localhost:8081
+    description: Serveur de développement local
+  - url: http://your-ec2-ip/storj
+    description: Serveur de production EC2
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token d'authentification Bearer (Authorization: Bearer votre_token_secret_suan)
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+        bucket:
+          type: string
+          example: obsidianeiafluence
+        endpoint:
+          type: string
+          example: https://gateway.storjshare.io
+
+    ListNotesResponse:
+      type: object
+      properties:
+        files:
+          type: array
+          items:
+            type: string
+          example:
+            - "2025-10-11.md"
+            - "Bienvenue.md"
+            - "IAa actionnable & utilise.md"
+
+    ReadNoteRequest:
+      type: object
+      required:
+        - filename
+      properties:
+        filename:
+          type: string
+          description: Nom du fichier à lire
+          example: "Bienvenue.md"
+
+    ReadNoteResponse:
+      type: object
+      properties:
+        filename:
+          type: string
+          example: "Bienvenue.md"
+        content:
+          type: string
+          example: "Contenu du fichier..."
+
+    WriteNoteRequest:
+      type: object
+      required:
+        - filename
+      properties:
+        filename:
+          type: string
+          description: Nom du fichier à écrire
+          example: "nouveau-fichier.md"
+        content:
+          type: string
+          description: Contenu du fichier
+          example: "# Mon nouveau fichier\n\nContenu ici..."
+
+    WriteNoteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "nouveau-fichier.md uploaded"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Unauthorized"
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Vérifier l'état de l'API et la configuration Storj
+      operationId: healthCheck
+      tags:
+        - System
+      security: []
+      responses:
+        '200':
+          description: API opérationnelle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /listNotes:
+    get:
+      summary: Liste tous les fichiers
+      description: Retourne la liste de tous les fichiers présents dans le bucket Storj
+      operationId: listNotes
+      tags:
+        - Notes
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Liste des fichiers récupérée avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListNotesResponse'
+        '401':
+          description: Non autorisé - Token manquant ou invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /readNote:
+    post:
+      summary: Lire un fichier
+      description: Récupère le contenu d'un fichier spécifique du bucket Storj
+      operationId: readNote
+      tags:
+        - Notes
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadNoteRequest'
+      responses:
+        '200':
+          description: Fichier lu avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadNoteResponse'
+        '400':
+          description: Requête invalide - Nom de fichier manquant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Missing filename"
+        '401':
+          description: Non autorisé - Token manquant ou invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Fichier non trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Not found"
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /writeNote:
+    post:
+      summary: Écrire un fichier
+      description: Crée ou met à jour un fichier dans le bucket Storj
+      operationId: writeNote
+      tags:
+        - Notes
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WriteNoteRequest'
+      responses:
+        '200':
+          description: Fichier écrit avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WriteNoteResponse'
+        '400':
+          description: Requête invalide - Nom de fichier manquant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Missing filename"
+        '401':
+          description: Non autorisé - Token manquant ou invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+tags:
+  - name: System
+    description: Endpoints système (health check)
+  - name: Notes
+    description: Gestion des fichiers notes dans Storj S3
