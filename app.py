@@ -1,7 +1,8 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 import boto3
 import os
 from dotenv import load_dotenv
+from flask_swagger_ui import get_swaggerui_blueprint
 
 # Charger les variables d'environnement depuis .env
 load_dotenv()
@@ -23,6 +24,27 @@ s3 = session.client(
     aws_secret_access_key=SECRET_KEY,
     endpoint_url=ENDPOINT
 )
+
+
+# Configuration Swagger UI
+SWAGGER_URL = '/api/docs'
+API_URL = '/openapi.yaml'
+
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,
+    API_URL,
+    config={
+        'app_name': "Storj Worker API"
+    }
+)
+
+app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+
+
+# Route pour servir le fichier OpenAPI
+@app.route('/openapi.yaml')
+def openapi_spec():
+    return send_from_directory('.', 'openapi.yaml')
 
 
 # Middleware d'authentification
