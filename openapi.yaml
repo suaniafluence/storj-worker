@@ -22,7 +22,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Token d'authentification Bearer (Authorization: Bearer votre_token_secret_suan)
+      description: "Token d'authentification Bearer (Authorization: Bearer votre_token_secret_suan)"
 
   schemas:
     HealthResponse:
